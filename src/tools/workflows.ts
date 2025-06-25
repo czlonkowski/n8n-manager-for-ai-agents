@@ -41,8 +41,7 @@ const createWorkflowSchema = z.object({
   name: z.string(),
   nodes: z.array(workflowNodeSchema),
   connections: workflowConnectionSchema,
-  // Note: active field is intentionally omitted as it's read-only during creation
-  tags: z.array(z.string()).optional(),
+  // Note: active and tags fields are intentionally omitted as they're read-only during creation
   settings: z.object({
     executionOrder: z.enum(['v0', 'v1']).default('v1'),
     timezone: z.string().optional(),
@@ -122,7 +121,6 @@ export const workflowTools: Tool[] = [
           },
         },
         connections: { type: 'object', description: 'Node connection mappings' },
-        tags: { type: 'array', items: { type: 'string' } },
         settings: {
           type: 'object',
           description: 'Workflow settings (required by n8n API)',

@@ -81,6 +81,26 @@ export class N8nApiClient {
     );
   }
 
+  // Clean workflow data for update operations - removes read-only fields
+  private cleanWorkflowForUpdate(workflow: Workflow): Partial<Workflow> {
+    const {
+      // Remove read-only/computed fields
+      id,
+      createdAt,
+      updatedAt,
+      versionId,
+      meta,
+      staticData,
+      // Remove fields that cause API errors
+      pinData,
+      tags,
+      // Keep everything else
+      ...cleanedWorkflow
+    } = workflow as any;
+
+    return cleanedWorkflow;
+  }
+
   private async request<T>(config: AxiosRequestConfig, retries = 0): Promise<T> {
     try {
       const response = await this.client.request<T>(config);
@@ -149,20 +169,23 @@ export class N8nApiClient {
   }
 
   async updateWorkflow(id: string, workflow: Partial<Workflow>): Promise<Workflow> {
-    // First try PUT, then fall back to PATCH if PUT fails
+    // Clean the workflow data to remove read-only fields
+    const cleanedWorkflow = this.cleanWorkflowForUpdate(workflow as Workflow);
+    
+    // First try PATCH, then fall back to PUT if PATCH fails
     try {
       return await this.request<Workflow>({
-        method: 'PUT',
+        method: 'PATCH',
         url: `/workflows/${id}`,
-        data: workflow,
+        data: cleanedWorkflow,
       });
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 405) {
-        // If PUT is not allowed, try PATCH
+        // If PATCH is not allowed, try PUT
         return this.request<Workflow>({
-          method: 'PATCH',
+          method: 'PUT',
           url: `/workflows/${id}`,
-          data: workflow,
+          data: cleanedWorkflow,
         });
       }
       throw error;
@@ -185,50 +208,76 @@ export class N8nApiClient {
   }
 
   async activateWorkflow(id: string): Promise<Workflow> {
-    // Always fetch full workflow first to ensure we have all required data
-    const workflow = await this.getWorkflow(id);
-    workflow.active = true;
-    
     try {
-      // Try PUT with full workflow data
+      // First try with minimal payload - just active field
       return await this.request<Workflow>({
-        method: 'PUT',
+        method: 'PATCH',
         url: `/workflows/${id}`,
-        data: workflow,
+        data: { active: true },
       });
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 405) {
-        // If PUT is not allowed, try PATCH with full workflow
-        return this.request<Workflow>({
-          method: 'PATCH',
-          url: `/workflows/${id}`,
-          data: workflow,
-        });
+      if (axios.isAxiosError(error) && 
+          (error.response?.status === 405 || 
+           error.response?.status === 400 || 
+           error.response?.data?.message?.includes('additional properties'))) {
+        // If minimal payload fails, try with cleaned full workflow
+        const workflow = await this.getWorkflow(id);
+        workflow.active = true;
+        const cleanedWorkflow = this.cleanWorkflowForUpdate(workflow);
+        
+        try {
+          // Try PATCH with cleaned data
+          return await this.request<Workflow>({
+            method: 'PATCH',
+            url: `/workflows/${id}`,
+            data: cleanedWorkflow,
+          });
+        } catch (patchError) {
+          // Last resort: try PUT with cleaned data
+          return this.request<Workflow>({
+            method: 'PUT',
+            url: `/workflows/${id}`,
+            data: cleanedWorkflow,
+          });
+        }
       }
       throw error;
     }
   }
 
   async deactivateWorkflow(id: string): Promise<Workflow> {
-    // Always fetch full workflow first to ensure we have all required data
-    const workflow = await this.getWorkflow(id);
-    workflow.active = false;
-    
     try {
-      // Try PUT with full workflow data
+      // First try with minimal payload - just active field
       return await this.request<Workflow>({
-        method: 'PUT',
+        method: 'PATCH',
         url: `/workflows/${id}`,
-        data: workflow,
+        data: { active: false },
       });
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 405) {
-        // If PUT is not allowed, try PATCH with full workflow
-        return this.request<Workflow>({
-          method: 'PATCH',
-          url: `/workflows/${id}`,
-          data: workflow,
-        });
+      if (axios.isAxiosError(error) && 
+          (error.response?.status === 405 || 
+           error.response?.status === 400 || 
+           error.response?.data?.message?.includes('additional properties'))) {
+        // If minimal payload fails, try with cleaned full workflow
+        const workflow = await this.getWorkflow(id);
+        workflow.active = false;
+        const cleanedWorkflow = this.cleanWorkflowForUpdate(workflow);
+        
+        try {
+          // Try PATCH with cleaned data
+          return await this.request<Workflow>({
+            method: 'PATCH',
+            url: `/workflows/${id}`,
+            data: cleanedWorkflow,
+          });
+        } catch (patchError) {
+          // Last resort: try PUT with cleaned data
+          return this.request<Workflow>({
+            method: 'PUT',
+            url: `/workflows/${id}`,
+            data: cleanedWorkflow,
+          });
+        }
       }
       throw error;
     }
