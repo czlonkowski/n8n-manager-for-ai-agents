@@ -100,7 +100,6 @@ Due to n8n public API constraints, the following features are handled with worka
 
 - [Product Requirements Document (PRD)](docs/PRD.md) - Comprehensive project specifications
 - [Implementation Checklist](docs/implementation-checklist.md) - Development roadmap
-- [API Review](docs/n8n-api-comprehensive-review.md) - n8n API analysis and findings
 
 ## 🧪 Development
 
