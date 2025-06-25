@@ -309,10 +309,13 @@ export async function handleListWorkflows(
 ): Promise<McpToolResponse> {
   const params = listWorkflowsSchema.parse(args || {});
   
-  // Filter out null tags to prevent API errors
+  // Filter out null tags and convert array to comma-separated string
   const cleanParams: any = { ...params };
   if (cleanParams.tags === null) {
     delete cleanParams.tags;
+  } else if (Array.isArray(cleanParams.tags)) {
+    // n8n API expects comma-separated string, not array
+    cleanParams.tags = cleanParams.tags.join(',');
   }
   
   const response = await client.listWorkflows(cleanParams);
