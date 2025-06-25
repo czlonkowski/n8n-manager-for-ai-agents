@@ -41,7 +41,8 @@ REQUIREMENTS:
 2. Must have a Webhook trigger node
 3. HTTP method must match webhook configuration (often GET, not POST)
 4. Use the exact webhook URL from the workflow
-Example URL format: https://your-n8n.com/webhook/[uuid]`,
+Example URL format: https://your-n8n.com/webhook/[uuid]
+Returns: Webhook response data (varies by workflow configuration)`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -66,7 +67,7 @@ Example URL format: https://your-n8n.com/webhook/[uuid]`,
   {
     name: 'n8n_get_execution',
     description: `Get details of a specific execution.
-Returns execution ID, workflow ID, status, start/stop times, and node execution details.
+Returns: Execution ID, workflow ID/name, status, start/stop times, duration, and optionally full node execution data.
 Set includeData=true to get full execution data including node outputs.`,
     inputSchema: {
       type: 'object',
@@ -84,7 +85,7 @@ Set includeData=true to get full execution data including node outputs.`,
   {
     name: 'n8n_list_executions',
     description: `List workflow executions with filters (uses cursor-based pagination).
-Returns execution ID, workflow ID, status, start time, and duration.
+Returns: Total count, list of executions (ID, workflow ID, status, start time), and nextCursor if more results.
 NOTE: Status may show as 'undefined' in list view - use get_execution for full status.
 Status filter options: 'success', 'error', 'waiting' (not 'running').
 Cannot filter by date or stop running executions.`,
@@ -109,7 +110,8 @@ Cannot filter by date or stop running executions.`,
   },
   {
     name: 'n8n_delete_execution',
-    description: 'Delete an execution record',
+    description: `Delete an execution record.
+Returns: Confirmation message with execution ID`,
     inputSchema: {
       type: 'object',
       properties: {

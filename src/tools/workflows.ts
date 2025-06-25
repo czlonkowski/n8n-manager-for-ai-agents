@@ -89,7 +89,7 @@ const listWorkflowsSchema = z.object({
   limit: z.number().min(1).max(100).default(100),
   cursor: z.string().optional(),
   active: z.boolean().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional().nullable(),
   projectId: z.string().optional(),
   excludePinnedData: z.boolean().default(true),
   instance: z.string().optional(),
@@ -102,7 +102,8 @@ export const workflowTools: Tool[] = [
     description: `Create a new n8n workflow with nodes and connections. Workflows are created inactive by default.
 IMPORTANT: Do not include 'tags' or 'active' parameters as they are read-only.
 Example node: {id: "node_1", name: "Manual", type: "n8n-nodes-base.manualTrigger", position: [250,300], parameters: {}, typeVersion: 1}
-Example connection: {"Manual": {"main": [[{"node": "Code", "type": "main", "index": 0}]]}}`,
+Example connection: {"Manual": {"main": [[{"node": "Code", "type": "main", "index": 0}]]}}
+Returns: Workflow ID, name, active status (false), node count, and tags (if any)`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -141,7 +142,8 @@ Example connection: {"Manual": {"main": [[{"node": "Code", "type": "main", "inde
   },
   {
     name: 'n8n_get_workflow',
-    description: 'Retrieve a specific workflow by ID',
+    description: `Retrieve a specific workflow by ID.
+Returns: Complete workflow details including name, ID, active status, nodes array, connections, settings, creation/update timestamps`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -155,7 +157,8 @@ Example connection: {"Manual": {"main": [[{"node": "Code", "type": "main", "inde
     description: `Update an existing workflow.
 REQUIRED: Must include 'nodes' array even if not changing nodes.
 NOTE: 'active' parameter is read-only - workflows cannot be activated via API.
-For partial updates, fetch the workflow first, modify, then update with full node list.`,
+For partial updates, fetch the workflow first, modify, then update with full node list.
+Returns: Updated workflow name, ID, and active status`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -170,7 +173,8 @@ For partial updates, fetch the workflow first, modify, then update with full nod
   },
   {
     name: 'n8n_delete_workflow',
-    description: 'Delete a workflow permanently',
+    description: `Delete a workflow permanently.
+Returns: Confirmation message with workflow ID`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -182,7 +186,7 @@ For partial updates, fetch the workflow first, modify, then update with full nod
   {
     name: 'n8n_list_workflows',
     description: `List all workflows with filtering options (uses cursor-based pagination).
-Returns execution ID, workflow ID, name, active status, and tags.
+Returns: Total count, list of workflows (name, ID, active status, tags), and nextCursor if more results available.
 For pagination, use the cursor from previous response. Do not pass empty string for first page.`,
     inputSchema: {
       type: 'object',
@@ -190,7 +194,7 @@ For pagination, use the cursor from previous response. Do not pass empty string 
         limit: { type: 'number', description: 'Number of results', default: 100, maximum: 100 },
         cursor: { type: 'string', description: 'Pagination cursor from previous response. Leave empty for first page, do not pass empty string' },
         active: { type: 'boolean', description: 'Filter by active status' },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags (may need comma-separated string on some instances)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags - array of tag names. Do not pass null.' },
         projectId: { type: 'string', description: 'Filter by project (Enterprise only)' },
         excludePinnedData: { type: 'boolean', description: 'Exclude pinned node data', default: true },
         instance: { type: 'string', description: 'n8n instance to query (for multi-instance setups)' },
@@ -305,7 +309,13 @@ export async function handleListWorkflows(
 ): Promise<McpToolResponse> {
   const params = listWorkflowsSchema.parse(args || {});
   
-  const response = await client.listWorkflows(params);
+  // Filter out null tags to prevent API errors
+  const cleanParams: any = { ...params };
+  if (cleanParams.tags === null) {
+    delete cleanParams.tags;
+  }
+  
+  const response = await client.listWorkflows(cleanParams);
   
   let text = `Found ${response.data.length} workflows`;
   

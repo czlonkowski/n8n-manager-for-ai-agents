@@ -14,7 +14,7 @@ const healthCheckSchema = z.object({
 export const healthTool: Tool = {
   name: 'n8n_health_check',
   description: `Check n8n instance health and API connectivity.
-Returns: status, API URL, response time, configuration details.
+Returns: Health status (✅ Healthy/❌ Unhealthy), API URL, response time, configuration details (log level, timeout, rate limits).
 Useful for debugging connection issues before attempting other operations.`,
   inputSchema: {
     type: 'object',

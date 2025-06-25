@@ -21,12 +21,14 @@ import {
 } from './executions.js';
 
 import { healthTool, handleHealthCheck } from './health.js';
+import { infoTool, handleListAvailableTools } from './info.js';
 
 // Export all tools
 export const allTools: Tool[] = [
   ...workflowTools,
   ...executionTools,
   healthTool,
+  infoTool,
 ];
 
 // Export handler mapping
@@ -46,4 +48,7 @@ export const toolHandlers: Map<string, (args: unknown, client: N8nApiClient) => 
   
   // Health handler
   ['n8n_health_check', handleHealthCheck],
+  
+  // Info handler
+  ['n8n_list_available_tools', () => handleListAvailableTools()],
 ]);
