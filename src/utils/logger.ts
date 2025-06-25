@@ -1,5 +1,19 @@
 import winston from 'winston';
 import { config } from '../config/environment.js';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
+
+// Detect if running as MCP server (stdio mode)
+const isMcpMode = process.env.MCP_MODE === 'stdio' || 
+                  process.argv.includes('--mcp') ||
+                  !process.stdout.isTTY;
+
+// Create logs directory
+const logsDir = join(homedir(), '.n8n-manager', 'logs');
+if (!existsSync(logsDir)) {
+  mkdirSync(logsDir, { recursive: true });
+}
 
 // Custom format for development
 const devFormat = winston.format.combine(
@@ -28,17 +42,33 @@ const prodFormat = winston.format.combine(
   winston.format.json()
 );
 
-// Create logger instance
-export const logger = winston.createLogger({
-  level: config.LOG_LEVEL,
-  format: config.NODE_ENV === 'development' ? devFormat : prodFormat,
-  transports: [
-    // Console transport
+// Create transports array based on mode
+const transports: winston.transport[] = [];
+
+// Always add file transport
+transports.push(
+  new winston.transports.File({
+    filename: join(logsDir, 'n8n-manager.log'),
+    maxsize: 5242880, // 5MB
+    maxFiles: 5,
+  })
+);
+
+// Only add console transport if NOT in MCP mode
+if (!isMcpMode) {
+  transports.push(
     new winston.transports.Console({
       handleExceptions: true,
       handleRejections: true,
-    }),
-  ],
+    })
+  );
+}
+
+// Create logger instance
+export const logger = winston.createLogger({
+  level: config.LOG_LEVEL,
+  format: config.NODE_ENV === 'development' && !isMcpMode ? devFormat : prodFormat,
+  transports,
   // Don't exit on handled exceptions
   exitOnError: false,
 });

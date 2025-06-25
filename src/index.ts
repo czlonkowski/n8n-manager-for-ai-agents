@@ -3,21 +3,33 @@
 import { N8nMcpServer } from './server.js';
 import { log } from './utils/logger.js';
 
+// Detect MCP mode
+const isMcpMode = process.env.MCP_MODE === 'stdio' || 
+                  process.argv.includes('--mcp') ||
+                  !process.stdout.isTTY;
+
 // Handle process termination gracefully
 process.on('SIGINT', () => {
-  log.info('Received SIGINT, shutting down gracefully...');
+  if (!isMcpMode) {
+    log.info('Received SIGINT, shutting down gracefully...');
+  }
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  log.info('Received SIGTERM, shutting down gracefully...');
+  if (!isMcpMode) {
+    log.info('Received SIGTERM, shutting down gracefully...');
+  }
   process.exit(0);
 });
 
 // Main function
 async function main(): Promise<void> {
   try {
-    log.info('n8n MCP Server starting...');
+    // Only log startup if not in MCP mode
+    if (!isMcpMode) {
+      log.info('n8n MCP Server starting...');
+    }
     
     const server = new N8nMcpServer();
     await server.start();

@@ -75,6 +75,10 @@ export class N8nMcpServer {
   }
 
   private registerTools(): void {
+    const isMcpMode = process.env.MCP_MODE === 'stdio' || 
+                      process.argv.includes('--mcp') ||
+                      !process.stdout.isTTY;
+    
     // Register all tools from the tools directory
     for (const tool of allTools) {
       const handler = toolHandlers.get(tool.name);
@@ -85,7 +89,9 @@ export class N8nMcpServer {
       }
     }
 
-    log.info(`Registered ${this.tools.size} tools`);
+    if (!isMcpMode) {
+      log.info(`Registered ${this.tools.size} tools`);
+    }
   }
 
   private registerTool(
@@ -108,23 +114,36 @@ export class N8nMcpServer {
   }
 
   public async start(): Promise<void> {
-    log.info('Starting n8n MCP server...');
+    // Detect MCP mode
+    const isMcpMode = process.env.MCP_MODE === 'stdio' || 
+                      process.argv.includes('--mcp') ||
+                      !process.stdout.isTTY;
+    
+    if (!isMcpMode) {
+      log.info('Starting n8n MCP server...');
+    }
     
     try {
       // Test n8n connection
       const health = await this.n8nClient.healthCheck();
-      log.info('Connected to n8n instance', {
-        status: health.status,
-        version: health.version,
-      });
+      if (!isMcpMode) {
+        log.info('Connected to n8n instance', {
+          status: health.status,
+          version: health.version,
+        });
+      }
     } catch (error) {
       log.error('Failed to connect to n8n instance', error);
-      log.warn('Server will start but n8n operations may fail');
+      if (!isMcpMode) {
+        log.warn('Server will start but n8n operations may fail');
+      }
     }
 
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
 
-    log.info('n8n MCP server started successfully');
+    if (!isMcpMode) {
+      log.info('n8n MCP server started successfully');
+    }
   }
 }

@@ -146,11 +146,24 @@ export class N8nApiClient {
   }
 
   async updateWorkflow(id: string, workflow: Partial<Workflow>): Promise<Workflow> {
-    return this.request<Workflow>({
-      method: 'PATCH',
-      url: `/workflows/${id}`,
-      data: workflow,
-    });
+    // First try PUT, then fall back to PATCH if PUT fails
+    try {
+      return await this.request<Workflow>({
+        method: 'PUT',
+        url: `/workflows/${id}`,
+        data: workflow,
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 405) {
+        // If PUT is not allowed, try PATCH
+        return this.request<Workflow>({
+          method: 'PATCH',
+          url: `/workflows/${id}`,
+          data: workflow,
+        });
+      }
+      throw error;
+    }
   }
 
   async deleteWorkflow(id: string): Promise<void> {
@@ -169,19 +182,67 @@ export class N8nApiClient {
   }
 
   async activateWorkflow(id: string): Promise<Workflow> {
-    return this.request<Workflow>({
-      method: 'PATCH',
-      url: `/workflows/${id}`,
-      data: { active: true },
-    });
+    try {
+      // First try simple PUT with just active flag
+      return await this.request<Workflow>({
+        method: 'PUT',
+        url: `/workflows/${id}`,
+        data: { active: true },
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error) && (error.response?.status === 405 || error.response?.status === 400)) {
+        // If PUT with partial data fails, fetch full workflow and update it
+        try {
+          const workflow = await this.getWorkflow(id);
+          workflow.active = true;
+          return await this.request<Workflow>({
+            method: 'PUT',
+            url: `/workflows/${id}`,
+            data: workflow,
+          });
+        } catch (putError) {
+          // Last resort: try PATCH
+          return this.request<Workflow>({
+            method: 'PATCH',
+            url: `/workflows/${id}`,
+            data: { active: true },
+          });
+        }
+      }
+      throw error;
+    }
   }
 
   async deactivateWorkflow(id: string): Promise<Workflow> {
-    return this.request<Workflow>({
-      method: 'PATCH',
-      url: `/workflows/${id}`,
-      data: { active: false },
-    });
+    try {
+      // First try simple PUT with just active flag
+      return await this.request<Workflow>({
+        method: 'PUT',
+        url: `/workflows/${id}`,
+        data: { active: false },
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error) && (error.response?.status === 405 || error.response?.status === 400)) {
+        // If PUT with partial data fails, fetch full workflow and update it
+        try {
+          const workflow = await this.getWorkflow(id);
+          workflow.active = false;
+          return await this.request<Workflow>({
+            method: 'PUT',
+            url: `/workflows/${id}`,
+            data: workflow,
+          });
+        } catch (putError) {
+          // Last resort: try PATCH
+          return this.request<Workflow>({
+            method: 'PATCH',
+            url: `/workflows/${id}`,
+            data: { active: false },
+          });
+        }
+      }
+      throw error;
+    }
   }
 
   // Execution Operations

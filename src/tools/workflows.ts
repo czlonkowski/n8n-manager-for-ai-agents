@@ -44,15 +44,21 @@ const createWorkflowSchema = z.object({
   active: z.boolean().default(false),
   tags: z.array(z.string()).optional(),
   settings: z.object({
-    executionOrder: z.enum(['v0', 'v1']).optional(),
+    executionOrder: z.enum(['v0', 'v1']).default('v1'),
     timezone: z.string().optional(),
-    saveDataErrorExecution: z.enum(['all', 'none']).optional(),
-    saveDataSuccessExecution: z.enum(['all', 'none']).optional(),
-    saveManualExecutions: z.boolean().optional(),
-    saveExecutionProgress: z.boolean().optional(),
+    saveDataErrorExecution: z.enum(['all', 'none']).default('all'),
+    saveDataSuccessExecution: z.enum(['all', 'none']).default('all'),
+    saveManualExecutions: z.boolean().default(true),
+    saveExecutionProgress: z.boolean().default(true),
     executionTimeout: z.number().optional(),
     errorWorkflow: z.string().optional(),
-  }).optional(),
+  }).default({
+    executionOrder: 'v1',
+    saveDataErrorExecution: 'all',
+    saveDataSuccessExecution: 'all',
+    saveManualExecutions: true,
+    saveExecutionProgress: true,
+  }),
 });
 
 const updateWorkflowSchema = z.object({
@@ -63,15 +69,21 @@ const updateWorkflowSchema = z.object({
   active: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   settings: z.object({
-    executionOrder: z.enum(['v0', 'v1']).optional(),
+    executionOrder: z.enum(['v0', 'v1']).default('v1'),
     timezone: z.string().optional(),
-    saveDataErrorExecution: z.enum(['all', 'none']).optional(),
-    saveDataSuccessExecution: z.enum(['all', 'none']).optional(),
-    saveManualExecutions: z.boolean().optional(),
-    saveExecutionProgress: z.boolean().optional(),
+    saveDataErrorExecution: z.enum(['all', 'none']).default('all'),
+    saveDataSuccessExecution: z.enum(['all', 'none']).default('all'),
+    saveManualExecutions: z.boolean().default(true),
+    saveExecutionProgress: z.boolean().default(true),
     executionTimeout: z.number().optional(),
     errorWorkflow: z.string().optional(),
-  }).optional(),
+  }).default({
+    executionOrder: 'v1',
+    saveDataErrorExecution: 'all',
+    saveDataSuccessExecution: 'all',
+    saveManualExecutions: true,
+    saveExecutionProgress: true,
+  }),
 });
 
 const listWorkflowsSchema = z.object({
@@ -112,6 +124,17 @@ export const workflowTools: Tool[] = [
         connections: { type: 'object', description: 'Node connection mappings' },
         active: { type: 'boolean', description: 'Activate on creation', default: false },
         tags: { type: 'array', items: { type: 'string' } },
+        settings: {
+          type: 'object',
+          description: 'Workflow settings (required by n8n API)',
+          properties: {
+            executionOrder: { type: 'string', enum: ['v0', 'v1'], default: 'v1' },
+            saveDataErrorExecution: { type: 'string', enum: ['all', 'none'], default: 'all' },
+            saveDataSuccessExecution: { type: 'string', enum: ['all', 'none'], default: 'all' },
+            saveManualExecutions: { type: 'boolean', default: true },
+            saveExecutionProgress: { type: 'boolean', default: true },
+          },
+        },
       },
       required: ['name', 'nodes', 'connections'],
     },
@@ -238,6 +261,34 @@ export async function handleUpdateWorkflow(
 ): Promise<McpToolResponse> {
   const params = updateWorkflowSchema.parse(args);
   const { id, ...updateData } = params;
+  
+  // If updating without full workflow data, fetch existing workflow first
+  // to ensure we have all required fields for PUT operation
+  if (!updateData.nodes || !updateData.connections) {
+    try {
+      const existingWorkflow = await client.getWorkflow(id);
+      // Merge update data with existing workflow
+      Object.assign(existingWorkflow, updateData);
+      const workflow = await client.updateWorkflow(id, existingWorkflow);
+      
+      return {
+        content: [{
+          type: 'text',
+          text: `Updated workflow "${workflow.name}" (ID: ${workflow.id})\nActive: ${workflow.active ? 'Yes' : 'No'}`,
+        }],
+      };
+    } catch (error) {
+      // Fall back to partial update if fetch fails
+      const workflow = await client.updateWorkflow(id, updateData as Partial<Workflow>);
+      
+      return {
+        content: [{
+          type: 'text',
+          text: `Updated workflow "${workflow.name}" (ID: ${workflow.id})\nActive: ${workflow.active ? 'Yes' : 'No'}`,
+        }],
+      };
+    }
+  }
   
   const workflow = await client.updateWorkflow(id, updateData as Partial<Workflow>);
   

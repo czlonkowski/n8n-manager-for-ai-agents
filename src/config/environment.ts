@@ -31,8 +31,11 @@ function loadEnvironment() {
   const result = envSchema.safeParse(process.env);
   
   if (!result.success) {
-    console.error('Environment validation failed:');
-    console.error(result.error.format());
+    // Write errors to stderr only, not stdout
+    if (process.stderr.isTTY) {
+      process.stderr.write('Environment validation failed:\n');
+      process.stderr.write(JSON.stringify(result.error.format(), null, 2) + '\n');
+    }
     process.exit(1);
   }
   
