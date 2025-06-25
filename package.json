@@ -1,0 +1,59 @@
+{
+  "name": "n8n-manager-for-ai-agents",
+  "version": "1.0.0",
+  "description": "MCP server that enables Claude Desktop to manage n8n workflow automation instances through the n8n API",
+  "main": "build/index.js",
+  "type": "module",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:integration": "jest --testPathPattern=integration",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/czlonkowski/n8n-manager-for-ai-agents.git"
+  },
+  "keywords": [
+    "mcp",
+    "n8n",
+    "workflow",
+    "automation",
+    "ai",
+    "claude"
+  ],
+  "author": "Romuald Czlonkowski",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/czlonkowski/n8n-manager-for-ai-agents/issues"
+  },
+  "homepage": "https://github.com/czlonkowski/n8n-manager-for-ai-agents#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^10.1.5",
+    "jest": "^30.0.3",
+    "prettier": "^3.6.1",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.1",
+    "axios": "^1.10.0",
+    "dotenv": "^16.5.0",
+    "winston": "^3.17.0",
+    "zod": "^3.25.67"
+  }
+}

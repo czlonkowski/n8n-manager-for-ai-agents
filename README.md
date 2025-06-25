@@ -111,7 +111,7 @@ npm test
 npm run dev
 
 # Type checking
-npm run type-check
+npm run typecheck
 
 # Linting
 npm run lint
