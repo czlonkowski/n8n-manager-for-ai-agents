@@ -41,7 +41,7 @@ const createWorkflowSchema = z.object({
   name: z.string(),
   nodes: z.array(workflowNodeSchema),
   connections: workflowConnectionSchema,
-  active: z.boolean().default(false),
+  // Note: active field is intentionally omitted as it's read-only during creation
   tags: z.array(z.string()).optional(),
   settings: z.object({
     executionOrder: z.enum(['v0', 'v1']).default('v1'),
@@ -100,7 +100,7 @@ const listWorkflowsSchema = z.object({
 export const workflowTools: Tool[] = [
   {
     name: 'n8n_create_workflow',
-    description: 'Create a new n8n workflow with nodes and connections',
+    description: 'Create a new n8n workflow with nodes and connections. Note: Workflows are created inactive by default. Use n8n_activate_workflow to activate after creation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -122,7 +122,6 @@ export const workflowTools: Tool[] = [
           },
         },
         connections: { type: 'object', description: 'Node connection mappings' },
-        active: { type: 'boolean', description: 'Activate on creation', default: false },
         tags: { type: 'array', items: { type: 'string' } },
         settings: {
           type: 'object',

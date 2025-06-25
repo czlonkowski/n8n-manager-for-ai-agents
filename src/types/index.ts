@@ -45,7 +45,7 @@ export interface Workflow {
   name: string;
   nodes: WorkflowNode[];
   connections: WorkflowConnection;
-  active: boolean;
+  active?: boolean; // Optional for creation as it's read-only
   settings?: WorkflowSettings;
   staticData?: Record<string, unknown>;
   tags?: string[];
