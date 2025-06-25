@@ -35,7 +35,13 @@ const webhookRequestSchema = z.object({
 export const executionTools: Tool[] = [
   {
     name: 'n8n_trigger_webhook_workflow',
-    description: 'Trigger a workflow via webhook (workflow must have webhook trigger node). Note: Direct workflow execution is not available via the n8n API.',
+    description: `Trigger a workflow via webhook.
+REQUIREMENTS:
+1. Workflow must be ACTIVE
+2. Must have a Webhook trigger node
+3. HTTP method must match webhook configuration (often GET, not POST)
+4. Use the exact webhook URL from the workflow
+Example URL format: https://your-n8n.com/webhook/[uuid]`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -59,7 +65,9 @@ export const executionTools: Tool[] = [
   },
   {
     name: 'n8n_get_execution',
-    description: 'Get details of a specific execution',
+    description: `Get details of a specific execution.
+Returns execution ID, workflow ID, status, start/stop times, and node execution details.
+Set includeData=true to get full execution data including node outputs.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -75,12 +83,16 @@ export const executionTools: Tool[] = [
   },
   {
     name: 'n8n_list_executions',
-    description: 'List workflow executions with filters (uses cursor-based pagination). Note: Cannot filter by date or stop running executions.',
+    description: `List workflow executions with filters (uses cursor-based pagination).
+Returns execution ID, workflow ID, status, start time, and duration.
+NOTE: Status may show as 'undefined' in list view - use get_execution for full status.
+Status filter options: 'success', 'error', 'waiting' (not 'running').
+Cannot filter by date or stop running executions.`,
     inputSchema: {
       type: 'object',
       properties: {
         limit: { type: 'number', default: 100, maximum: 100 },
-        cursor: { type: 'string', description: 'Pagination cursor from previous response' },
+        cursor: { type: 'string', description: 'Pagination cursor from previous response. Leave empty for first page' },
         workflowId: { type: 'string', description: 'Filter by workflow ID' },
         projectId: { type: 'string', description: 'Filter by project (Enterprise only)' },
         status: { 

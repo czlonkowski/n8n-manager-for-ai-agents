@@ -99,7 +99,10 @@ const listWorkflowsSchema = z.object({
 export const workflowTools: Tool[] = [
   {
     name: 'n8n_create_workflow',
-    description: 'Create a new n8n workflow with nodes and connections. Note: Workflows are created inactive by default. Use n8n_activate_workflow to activate after creation.',
+    description: `Create a new n8n workflow with nodes and connections. Workflows are created inactive by default.
+IMPORTANT: Do not include 'tags' or 'active' parameters as they are read-only.
+Example node: {id: "node_1", name: "Manual", type: "n8n-nodes-base.manualTrigger", position: [250,300], parameters: {}, typeVersion: 1}
+Example connection: {"Manual": {"main": [[{"node": "Code", "type": "main", "index": 0}]]}}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -149,7 +152,10 @@ export const workflowTools: Tool[] = [
   },
   {
     name: 'n8n_update_workflow',
-    description: 'Update an existing workflow',
+    description: `Update an existing workflow.
+REQUIRED: Must include 'nodes' array even if not changing nodes.
+NOTE: 'active' parameter is read-only - workflows cannot be activated via API.
+For partial updates, fetch the workflow first, modify, then update with full node list.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -175,40 +181,20 @@ export const workflowTools: Tool[] = [
   },
   {
     name: 'n8n_list_workflows',
-    description: 'List all workflows with filtering options (uses cursor-based pagination)',
+    description: `List all workflows with filtering options (uses cursor-based pagination).
+Returns execution ID, workflow ID, name, active status, and tags.
+For pagination, use the cursor from previous response. Do not pass empty string for first page.`,
     inputSchema: {
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'Number of results', default: 100, maximum: 100 },
-        cursor: { type: 'string', description: 'Pagination cursor from previous response' },
+        cursor: { type: 'string', description: 'Pagination cursor from previous response. Leave empty for first page, do not pass empty string' },
         active: { type: 'boolean', description: 'Filter by active status' },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags (may need comma-separated string on some instances)' },
         projectId: { type: 'string', description: 'Filter by project (Enterprise only)' },
         excludePinnedData: { type: 'boolean', description: 'Exclude pinned node data', default: true },
         instance: { type: 'string', description: 'n8n instance to query (for multi-instance setups)' },
       },
-    },
-  },
-  {
-    name: 'n8n_activate_workflow',
-    description: 'Activate a workflow to enable triggers',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Workflow ID' },
-      },
-      required: ['id'],
-    },
-  },
-  {
-    name: 'n8n_deactivate_workflow',
-    description: 'Deactivate a workflow to disable triggers',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'Workflow ID' },
-      },
-      required: ['id'],
     },
   },
 ];
@@ -344,34 +330,3 @@ export async function handleListWorkflows(
   };
 }
 
-export async function handleActivateWorkflow(
-  args: unknown,
-  client: N8nApiClient
-): Promise<McpToolResponse> {
-  const params = z.object({ id: z.string() }).parse(args);
-  
-  const workflow = await client.activateWorkflow(params.id);
-  
-  return {
-    content: [{
-      type: 'text',
-      text: `Successfully activated workflow "${workflow.name}" (ID: ${workflow.id})`,
-    }],
-  };
-}
-
-export async function handleDeactivateWorkflow(
-  args: unknown,
-  client: N8nApiClient
-): Promise<McpToolResponse> {
-  const params = z.object({ id: z.string() }).parse(args);
-  
-  const workflow = await client.deactivateWorkflow(params.id);
-  
-  return {
-    content: [{
-      type: 'text',
-      text: `Successfully deactivated workflow "${workflow.name}" (ID: ${workflow.id})`,
-    }],
-  };
-}

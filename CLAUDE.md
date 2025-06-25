@@ -438,18 +438,122 @@ The `docs/previous_app_with_MCP_example/` directory contains a complete MCP serv
 
 Study this example for MCP implementation patterns, but note that this project has different goals and scope.
 
+## Workflow Examples
+
+### Minimal Workflow Structure
+```json
+{
+  "name": "My Test Workflow",
+  "nodes": [{
+    "id": "node_1",
+    "name": "Manual",
+    "type": "n8n-nodes-base.manualTrigger",
+    "position": [250, 300],
+    "parameters": {},
+    "typeVersion": 1
+  }],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  }
+}
+```
+
+### Webhook Workflow Example
+```json
+{
+  "name": "Webhook API Endpoint",
+  "nodes": [
+    {
+      "id": "webhook_1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "parameters": {
+        "path": "test-endpoint",
+        "httpMethod": "GET",
+        "responseMode": "onReceived",
+        "responseData": "successMessage"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "code_1",
+      "name": "Process",
+      "type": "n8n-nodes-base.code",
+      "position": [450, 300],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { result: 'processed' };"
+      },
+      "typeVersion": 2
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{
+        "node": "Process",
+        "type": "main",
+        "index": 0
+      }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+```
+
+### Connection Format
+Connections map source nodes to their targets:
+```json
+{
+  "SourceNodeName": {
+    "main": [[{
+      "node": "TargetNodeName",
+      "type": "main",
+      "index": 0
+    }]]
+  }
+}
+```
+
+## Common API Errors and Solutions
+
+### Error: "active is read-only"
+- **Cause**: Trying to set workflow active status during creation
+- **Solution**: Create workflow without `active` field, activation must be done manually in UI
+
+### Error: "request/body must NOT have additional properties"
+- **Cause**: Sending read-only fields like `tags`, `createdAt`, `updatedAt`, etc.
+- **Solution**: Only send editable fields: `name`, `nodes`, `connections`, `settings`
+
+### Error: "Method not allowed"
+- **Cause**: n8n instance doesn't support PATCH/PUT for workflow updates
+- **Solution**: This is an API-level restriction, updates must be done via UI
+
+### Error: "tags is read-only"
+- **Cause**: Trying to set tags during workflow creation
+- **Solution**: Remove `tags` parameter from create workflow request
+
+### Error: "request/body must have required property 'nodes'"
+- **Cause**: Updating workflow without including nodes array
+- **Solution**: Always include full `nodes` array even for minor updates
+
 ## Success Criteria Checklist
 
 ### Launch Requirements
-- [ ] All available n8n public API endpoints mapped to MCP tools
-- [ ] Authentication working with API keys
-- [ ] Error handling for all failure scenarios including missing endpoints
-- [ ] Webhook-based workflow execution implemented
-- [ ] Performance metrics meeting requirements
-- [ ] Security audit passed
-- [ ] Documentation complete with clear limitations
-- [ ] Feature detection for Enterprise endpoints
+- [x] All available n8n public API endpoints mapped to MCP tools
+- [x] Authentication working with API keys
+- [x] Error handling for all failure scenarios including missing endpoints
+- [x] Webhook-based workflow execution implemented
+- [x] Performance metrics meeting requirements
+- [x] Security audit passed
+- [x] Documentation complete with clear limitations
+- [x] Feature detection for Enterprise endpoints
 - [ ] 95%+ test coverage for implemented features
-- [ ] Multi-instance support working
+- [x] Multi-instance support working
 - [ ] Caching and rate limiting implemented
 - [ ] Docker deployment ready

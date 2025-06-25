@@ -10,8 +10,6 @@ import {
   handleUpdateWorkflow,
   handleDeleteWorkflow,
   handleListWorkflows,
-  handleActivateWorkflow,
-  handleDeactivateWorkflow,
 } from './workflows.js';
 
 import {
@@ -39,8 +37,6 @@ export const toolHandlers: Map<string, (args: unknown, client: N8nApiClient) => 
   ['n8n_update_workflow', handleUpdateWorkflow],
   ['n8n_delete_workflow', handleDeleteWorkflow],
   ['n8n_list_workflows', handleListWorkflows],
-  ['n8n_activate_workflow', handleActivateWorkflow],
-  ['n8n_deactivate_workflow', handleDeactivateWorkflow],
   
   // Execution handlers
   ['n8n_trigger_webhook_workflow', handleTriggerWebhookWorkflow],
