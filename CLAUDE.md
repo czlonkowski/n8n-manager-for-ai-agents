@@ -6,12 +6,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **n8n-manager-for-ai-agents** - An MCP server that enables Claude Desktop to manage n8n workflow automation instances through the n8n API.
 
+### n8n Compatibility Requirements
+- **Minimum n8n version**: 1.0.0
+- **API version**: v1
+- **Feature detection**: Runtime checks for enterprise features
+
 ### Key Features
-- Complete n8n API coverage through MCP tools
-- Workflow creation, management, and execution
+- Complete n8n API coverage through MCP tools (within API constraints)
+- Workflow creation, management, and webhook-based execution
 - Credential management with secure handling
-- User management (Enterprise features)
+- Tag and variable management
 - Audit and security reporting
+- Multi-instance support
+
+### Known n8n API Limitations
+- **No direct workflow execution**: Must use webhook triggers
+- **No execution control**: Cannot stop running executions
+- **No user management**: Not exposed via public API
+- **No credential schemas**: Cannot retrieve credential type definitions
+- **Limited filtering**: Fewer options than expected
+- **Cursor-based pagination**: Not offset-based as commonly expected
+
+### Implemented Workarounds
+1. **Webhook-Based Execution**: Workflows must have webhook triggers for execution
+2. **Polling for Results**: Check execution status periodically
+3. **Client-Side Filtering**: Additional filtering done in MCP server
+4. **Feature Detection**: Runtime checks for available endpoints
+5. **Variables via Source Control**: Using source control API for variable management
+
+## Quick Reference: What Works vs What Doesn't
+
+### ✅ Available via API
+- Workflow CRUD operations
+- Listing and getting executions (but NOT stopping them)
+- Credential management (without schema info)
+- Tags management
+- Import/export workflows
+- Source control operations
+- Health checks
+
+### ❌ NOT Available via API (Don't implement)
+- Direct workflow execution (use webhooks instead)
+- Stopping running executions
+- User management (all CRUD operations)
+- Credential type schemas
+- Execution date filtering
+- Community nodes management
 
 ### Technology Stack
 - **TypeScript**: Primary language
@@ -124,11 +164,11 @@ src/
 - `n8n_deactivate_workflow` - Deactivate workflow
 
 ### Execution Management
-- `n8n_execute_workflow` - Execute workflow with data
+- `n8n_trigger_webhook_workflow` - Trigger workflow via webhook (NOT direct execution)
 - `n8n_get_execution` - Get execution details
-- `n8n_list_executions` - List executions with filters
-- `n8n_stop_execution` - Stop running execution
+- `n8n_list_executions` - List executions with filters (cursor-based)
 - `n8n_delete_execution` - Delete execution record
+- ~~`n8n_stop_execution`~~ - NOT AVAILABLE in public API
 
 ### Credential Management
 - `n8n_create_credential` - Create credential
@@ -138,19 +178,42 @@ src/
 - `n8n_list_credentials` - List credentials
 - `n8n_get_credential_schema` - Get credential type schema
 
-### User Management (Enterprise)
-- `n8n_list_users` - List all users
-- `n8n_create_user` - Create new user
-- `n8n_get_user` - Get user details
-- `n8n_update_user` - Update user info
-- `n8n_delete_user` - Delete user
+### User Management (NOT AVAILABLE)
+**Note**: User management endpoints are not exposed through the n8n public API. These tools are specified for future implementation if/when n8n provides API access.
+- ~~`n8n_list_users`~~ - Not available via API
+- ~~`n8n_create_user`~~ - Not available via API
+- ~~`n8n_get_user`~~ - Not available via API
+- ~~`n8n_update_user`~~ - Not available via API
+- ~~`n8n_delete_user`~~ - Not available via API
+
+### Tags Management
+- `n8n_create_tag` - Create new tag
+- `n8n_update_tag` - Update existing tag
+- `n8n_delete_tag` - Delete tag
+- `n8n_list_tags` - List all tags (cursor-based)
+
+### Variables Management
+- `n8n_update_variables_via_source_control` - Update variables (no direct CRUD)
+
+### Import/Export Tools
+- `n8n_export_workflow` - Export workflow as JSON
+- `n8n_import_workflow` - Import workflow from JSON
+- `n8n_export_all_workflows` - Export all workflows
+
+### Source Control Tools
+- `n8n_pull_from_source_control` - Pull from git repository
+- `n8n_push_to_source_control` - Push to git repository
+- `n8n_get_source_control_status` - Get source control status
+
+### Health and System Tools
+- `n8n_health_check` - Check instance health and connectivity
 
 ### Audit Tools
 - `n8n_generate_audit` - Generate security audit report
 
 ## Environment Configuration
 
-Required environment variables:
+### Single Instance Configuration
 ```bash
 # n8n API Configuration
 N8N_API_URL=https://your-n8n-instance.com
@@ -164,6 +227,27 @@ CACHE_TTL=300                  # Cache TTL in seconds
 
 # Optional
 NODE_ENV=development           # development, production
+```
+
+### Multi-Instance Configuration
+```bash
+# Define instance names
+N8N_INSTANCES=production,staging,development
+
+# Production instance
+N8N_PRODUCTION_URL=https://prod.n8n.com
+N8N_PRODUCTION_API_KEY=prod-api-key
+
+# Staging instance
+N8N_STAGING_URL=https://staging.n8n.com
+N8N_STAGING_API_KEY=staging-api-key
+
+# Development instance
+N8N_DEVELOPMENT_URL=http://localhost:5678
+N8N_DEVELOPMENT_API_KEY=dev-api-key
+
+# Default instance (optional)
+N8N_DEFAULT_INSTANCE=production
 ```
 
 ## Security Considerations
@@ -195,13 +279,57 @@ npx @modelcontextprotocol/inspector build/index.js
 
 ## Performance Optimization
 
-1. **Caching**: 5-minute TTL for frequently accessed data
-2. **Connection Pooling**: Max 10 concurrent connections
-3. **Batch Operations**: Support for bulk operations where possible
-4. **Response Time Targets**:
-   - List operations: < 500ms
-   - Single resource: < 300ms
-   - Workflow execution: < 1s to initiate
+### Response Time Targets
+- **List Operations**: < 500ms
+- **Single Resource Fetch**: < 300ms
+- **Workflow Execution**: < 1s to initiate
+- **Batch Operations**: < 5s for 10 items
+
+### Caching Strategy
+```typescript
+// Per-operation cache configuration
+const cacheConfig = {
+  // Cacheable operations with TTL
+  'n8n_list_workflows': { ttl: 300, key: '{instance}:workflows:{hash}' },
+  'n8n_get_workflow': { ttl: 300, key: '{instance}:workflow:{id}' },
+  'n8n_list_credentials': { ttl: 600, key: '{instance}:credentials' },
+  'n8n_list_tags': { ttl: 600, key: '{instance}:tags' },
+  'n8n_health_check': { ttl: 60, key: '{instance}:health' },
+  
+  // Non-cacheable operations
+  'n8n_list_executions': { ttl: 0 },
+  'n8n_trigger_webhook_workflow': { ttl: 0 },
+  'n8n_create_*': { ttl: 0 },
+  'n8n_update_*': { ttl: 0 },
+  'n8n_delete_*': { ttl: 0 }
+};
+```
+
+### Rate Limiting Configuration
+```typescript
+const rateLimitConfig = {
+  // Global rate limit
+  global: {
+    max: 60,        // requests
+    window: 60000   // per minute
+  },
+  
+  // Per-endpoint rate limits
+  perEndpoint: {
+    '/workflows': { max: 100, window: 60000 },
+    '/workflows/:id': { max: 200, window: 60000 },
+    '/executions': { max: 50, window: 60000 },
+    '/webhooks': { max: 30, window: 60000 },
+    '/credentials': { max: 50, window: 60000 }
+  }
+};
+```
+
+### Other Optimizations
+1. **Connection Pooling**: Max 10 concurrent connections per instance
+2. **Request Queuing**: Handle burst traffic gracefully
+3. **Batch Operations**: Support for bulk operations where available
+4. **Cache Invalidation**: Auto-invalidate on create/update/delete operations
 
 ## Error Handling
 
@@ -256,6 +384,44 @@ Add to Claude Desktop config:
 }
 ```
 
+## Implementation Phases
+
+### Phase 1 - Core Functionality (Week 1)
+- Update to MCP SDK v1.13.1
+- Implement basic MCP server with stdio transport
+- Create n8n API client with authentication
+- Implement available workflow CRUD operations
+- Add cursor-based pagination throughout
+- Implement basic execution queries (list, get, delete)
+- Add health check and metrics endpoints
+- Document all API limitations clearly
+
+### Phase 2 - Workarounds & Adaptations (Week 2)
+- Implement webhook-based workflow execution system
+- Add comprehensive error handling for missing endpoints
+- Create feature detection for Enterprise endpoints
+- Build fallback mechanisms for unavailable features
+- Implement tag management tools
+- Add caching layer with cursor support
+- Multi-instance support
+
+### Phase 3 - Advanced Features (Week 3)
+- Variables management via source control API
+- Client-side filtering for missing API filters
+- Rate limiting implementation
+- Batch operations for available endpoints
+- Enhanced retry logic and error recovery
+- Performance optimizations
+
+### Phase 4 - Documentation & Polish (Week 4)
+- Create migration guide from ideal to actual API
+- Document all workarounds and limitations
+- Full test coverage for implemented features
+- Security hardening
+- Docker deployment optimization
+- Create examples for webhook-based execution
+- User guide for handling API constraints
+
 ## Reference Implementation
 
 The `docs/previous_app_with_MCP_example/` directory contains a complete MCP server implementation for n8n node documentation. While this project focuses on API integration rather than node documentation, the example demonstrates:
@@ -266,3 +432,19 @@ The `docs/previous_app_with_MCP_example/` directory contains a complete MCP serv
 - Docker deployment
 
 Study this example for MCP implementation patterns, but note that this project has different goals and scope.
+
+## Success Criteria Checklist
+
+### Launch Requirements
+- [ ] All available n8n public API endpoints mapped to MCP tools
+- [ ] Authentication working with API keys
+- [ ] Error handling for all failure scenarios including missing endpoints
+- [ ] Webhook-based workflow execution implemented
+- [ ] Performance metrics meeting requirements
+- [ ] Security audit passed
+- [ ] Documentation complete with clear limitations
+- [ ] Feature detection for Enterprise endpoints
+- [ ] 95%+ test coverage for implemented features
+- [ ] Multi-instance support working
+- [ ] Caching and rate limiting implemented
+- [ ] Docker deployment ready
