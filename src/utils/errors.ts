@@ -88,11 +88,20 @@ function handleAxiosError(error: AxiosError): { message: string; code: ErrorCode
   const status = error.response?.status;
   const statusText = error.response?.statusText;
   const apiMessage = (error.response?.data as { message?: string })?.message;
+  const config = (error as any).config;
 
   let message: string;
   let code: ErrorCode;
 
   switch (status) {
+    case 400:
+      code = ErrorCode.INVALID_PARAMS;
+      if (apiMessage?.includes('settings')) {
+        message = 'Workflow settings are required. The n8n API requires a settings object with executionOrder, saveData options, etc.';
+      } else {
+        message = apiMessage || 'Bad request. The request parameters are invalid.';
+      }
+      break;
     case 401:
       code = ErrorCode.AUTHENTICATION_ERROR;
       message = 'Authentication failed. Please check your n8n API key.';
@@ -104,6 +113,13 @@ function handleAxiosError(error: AxiosError): { message: string; code: ErrorCode
     case 404:
       code = ErrorCode.NOT_FOUND;
       message = apiMessage || 'The requested resource was not found.';
+      break;
+    case 405:
+      code = ErrorCode.API_ERROR;
+      message = `Method not allowed. The n8n instance does not support ${config?.method || 'this method'} for this endpoint.`;
+      if (config?.url?.includes('/workflows') && config?.method === 'PATCH') {
+        message += ' Some n8n instances require PUT method for workflow updates instead of PATCH.';
+      }
       break;
     case 429:
       code = ErrorCode.RATE_LIMIT_ERROR;

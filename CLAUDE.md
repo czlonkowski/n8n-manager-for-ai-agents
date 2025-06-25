@@ -26,6 +26,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No credential schemas**: Cannot retrieve credential type definitions
 - **Limited filtering**: Fewer options than expected
 - **Cursor-based pagination**: Not offset-based as commonly expected
+- **Settings field required**: Workflow creation now requires 'settings' object (not documented)
+- **PATCH method restrictions**: Some instances don't support PATCH for workflow updates (use PUT instead)
 
 ### Implemented Workarounds
 1. **Webhook-Based Execution**: Workflows must have webhook triggers for execution
@@ -33,6 +35,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. **Client-Side Filtering**: Additional filtering done in MCP server
 4. **Feature Detection**: Runtime checks for available endpoints
 5. **Variables via Source Control**: Using source control API for variable management
+6. **Default Settings**: Automatically includes required settings with sensible defaults
+7. **Method Fallback**: Tries PUT method first, falls back to PATCH for compatibility
+8. **Full Workflow Updates**: Fetches existing workflow data for partial updates when needed
 
 ## Quick Reference: What Works vs What Doesn't
 
