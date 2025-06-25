@@ -6,47 +6,78 @@
 [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-1.13.1-purple)](https://modelcontextprotocol.io)
 [![n8n API](https://img.shields.io/badge/n8n%20API-v1-orange)](https://docs.n8n.io/api/)
 
-A Model Context Protocol (MCP) server that enables Claude Desktop and other AI agents to manage n8n workflow automation instances through natural language interactions.
+A Model Context Protocol (MCP) server that enables Claude Desktop and other AI agents to manage n8n workflow automation instances through the n8n API.
 
 ## 🎯 Project Overview
 
-This project creates a seamless bridge between AI capabilities and n8n's workflow automation platform. It exposes n8n's public API operations as MCP tools, allowing AI agents to:
+This MCP server provides AI agents with tools to manage n8n workflows programmatically. It implements the core n8n API operations with intelligent workarounds for API limitations.
 
-- ✅ Create, read, update, and delete workflows
-- ✅ Manage workflow executions
-- ✅ Handle credentials and tags
-- ✅ Monitor instance health
-- ⚡ Execute workflows via webhooks (API limitation workaround)
+### ✅ What's Working
 
-## 🚀 Key Features
+- **Workflow Management**: Create, read, update, and delete workflows
+- **Execution Monitoring**: List and view execution details, delete execution records
+- **Webhook Triggers**: Execute workflows via webhook endpoints
+- **Health Monitoring**: Check n8n instance connectivity and configuration
 
-- **Full n8n API Coverage**: Implements all available public API endpoints
-- **Cursor-Based Pagination**: Efficient data retrieval for large datasets
-- **Multi-Instance Support**: Manage multiple n8n instances from a single MCP server
-- **Webhook Execution**: Innovative workaround for n8n's execution API limitations
-- **Enterprise Feature Detection**: Automatically detects and handles enterprise-only features
-- **Comprehensive Error Handling**: Graceful degradation for missing API endpoints
-- **Security First**: API keys stored securely, no credentials in logs
+### 🚧 Current Limitations
 
-## ⚠️ Known Limitations
+- **Workflow Activation**: Cannot activate/deactivate workflows via API (manual UI activation required)
+- **Direct Execution**: Not available - must use webhook triggers
+- **Tags & Credentials**: Read-only fields, cannot be set via API
 
-Due to n8n public API constraints, the following features are handled with workarounds or documented as unavailable:
+## 🚀 Implemented Features
 
-- **Direct Workflow Execution**: Use webhook triggers instead
-- **Stop Execution**: Not available via API
-- **User Management**: Enterprise UI only
-- **Execution Date Filtering**: Client-side filtering implemented
-- **Credential Schemas**: Not exposed via API
+- **Workflow Operations**: Full CRUD operations for n8n workflows
+- **Execution Management**: View, list, and delete execution records
+- **Webhook-Based Execution**: Trigger workflows via webhook URLs
+- **Smart Error Handling**: Automatic removal of read-only fields, method fallbacks
+- **AI-Friendly Descriptions**: Enhanced tool descriptions with examples and clear limitations
+- **Cursor-Based Pagination**: Efficient handling of large result sets
+- **Health Monitoring**: Built-in connectivity and configuration checks
+
+## ⚠️ API Limitations & Workarounds
+
+### Discovered Limitations
+- **Workflow Activation**: The `active` field is read-only - workflows must be activated manually in the UI
+- **Tags Field**: Read-only during creation and updates
+- **PATCH Method**: Some n8n instances don't support PATCH for workflow updates
+- **Direct Execution**: Must use webhook triggers (no direct execution API)
+- **Settings Field**: Required but undocumented - we provide sensible defaults
+
+### Not Implemented (API Unavailable)
+- **User Management**: No public API endpoints
+- **Credential Management**: Limited API, schemas not exposed
+- **Stop Execution**: Cannot stop running executions via API
+- **Variables**: Only available through source control API
+- **Import/Export**: Planned but not yet implemented
+
+## 📦 Available MCP Tools
+
+### Workflow Management
+- `n8n_create_workflow` - Create new workflows with nodes and connections
+- `n8n_get_workflow` - Retrieve workflow details by ID
+- `n8n_update_workflow` - Update existing workflows (requires full node list)
+- `n8n_delete_workflow` - Delete workflows permanently
+- `n8n_list_workflows` - List workflows with filtering and pagination
+
+### Execution Management
+- `n8n_trigger_webhook_workflow` - Trigger workflows via webhook URL
+- `n8n_get_execution` - Get detailed execution information
+- `n8n_list_executions` - List executions with status filtering
+- `n8n_delete_execution` - Delete execution records
+
+### System Tools
+- `n8n_health_check` - Check API connectivity and configuration
 
 ## 🛠️ Technology Stack
 
 - **Runtime**: Node.js 20+
 - **Language**: TypeScript 5.0
 - **MCP SDK**: @modelcontextprotocol/sdk v1.13.1
-- **HTTP Client**: Axios with connection pooling
+- **HTTP Client**: Axios with retry logic
 - **Validation**: Zod schemas
-- **Logging**: Winston
-- **Testing**: Jest
+- **Logging**: Winston (file-based in MCP mode)
+- **Build**: TypeScript with ES modules
 
 ## 📋 Prerequisites
 
@@ -80,26 +111,59 @@ Due to n8n public API constraints, the following features are handled with worka
    ```
 
 5. **Configure Claude Desktop**
-   Add to your Claude Desktop configuration:
+   Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
    ```json
    {
      "mcpServers": {
-       "n8n": {
+       "n8n-manager": {
          "command": "node",
-         "args": ["./n8n-manager-for-ai-agents/build/index.js"],
+         "args": ["/absolute/path/to/n8n-manager-for-ai-agents/build/index.js"],
          "env": {
-           "N8N_API_URL": "https://your-instance.com",
-           "N8N_API_KEY": "your-api-key"
+           "N8N_API_URL": "https://your-n8n-instance.com",
+           "N8N_API_KEY": "your-api-key",
+           "LOG_LEVEL": "info",
+           "NODE_ENV": "production",
+           "MCP_MODE": "stdio"
          }
        }
      }
    }
    ```
 
+6. **Restart Claude Desktop** and verify the n8n-manager appears in the MCP tools list
+
+### 📁 Log Files
+Logs are written to `~/.n8n-manager/logs/n8n-manager.log` to avoid interfering with MCP protocol communication.
+
+## 💡 Usage Examples
+
+### Creating a Simple Workflow
+```
+"Create a workflow named 'Test API' with a manual trigger"
+```
+
+### Listing Workflows
+```
+"Show me all active workflows"
+"List workflows with tag 'production'"
+```
+
+### Checking Executions
+```
+"Show recent executions for workflow ID abc123"
+"Get details of execution xyz789"
+```
+
+### Webhook Execution
+```
+"Trigger the webhook at https://n8n.example.com/webhook/abc-def-ghi"
+```
+
 ## 📖 Documentation
 
-- [Product Requirements Document (PRD)](docs/PRD.md) - Comprehensive project specifications
-- [Implementation Checklist](docs/implementation-checklist.md) - Development roadmap
+- [CLAUDE.md](CLAUDE.md) - AI guidance, examples, and error solutions
+- [Product Requirements Document](docs/PRD.md) - Original project specifications
+- [Implementation Checklist](docs/implementation-checklist.md) - Development progress
 
 ## 🧪 Development
 
@@ -150,4 +214,4 @@ Copyright (c) 2024 Romuald Czlonkowski @ [aiadvisors.pl](https://aiadvisors.pl)
 
 ---
 
-*This project is currently in active development. Check the [implementation checklist](docs/implementation-checklist.md) for progress updates.*
+*Phase 1 Complete: Core workflow and execution management tools are fully functional. See [CLAUDE.md](CLAUDE.md) for detailed usage guidance and common error solutions.*
