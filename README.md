@@ -1,5 +1,10 @@
 # n8n Manager for AI Agents
 
+> [!IMPORTANT]
+> **This repository is no longer being actively developed.** The n8n instance management tools have been integrated into the more comprehensive [n8n-mcp](https://github.com/czlonkowski/n8n-mcp) project, which provides a complete solution for n8n automation with AI agents.
+>
+> Please use [n8n-mcp](https://github.com/czlonkowski/n8n-mcp) for the latest features and updates.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
